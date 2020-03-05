@@ -1,0 +1,134 @@
+--CREATE TABLES--
+Employee
+---------------------------------------------------
+CREATE TABLE Employee(
+  Employee_Id NUMBER(6),
+  First_Name VARCHAR2(25),
+  Last_Name VARCHAR2(25),
+  Hire_Date DATE,
+  City VARCHAR2(25),
+  State VARCHAR2(25),
+  CONSTRAINT EMPLOYEE_PK PRIMARY KEY (Employee_Id));
+---------------------------------------------------
+Department
+---------------------------------------------------
+  CREATE TABLE Department(
+  Department_Id NUMBER,
+  Department_Name VARCHAR2(30),
+  CONSTRAINT DEPARTMENT_PK PRIMARY KEY (Department_Id)
+  );
+  
+  -------------------------------------------------
+  Salary
+  -------------------------------------------------
+  
+  CREATE TABLE Salary(
+  Salary_Id NUMBER,
+  Gross_Salary NUMBER,
+  Hourly_Pay NUMBER,
+  State_Tax NUMBER,
+  Federal_Tax NUMBER,
+  Account_Id NUMBER,
+  CONSTRAINT SALARY_PK PRIMARY KEY (Salary_Id),
+  FOREIGN KEY (Account_Id)
+        REFERENCES ACCOUNTDETAILS(Account_Id)
+  );
+  
+  -------------------------------------------------
+  DepartmentProject Bridge
+  -------------------------------------------------
+  CREATE TABLE DepartmentProject(
+  Department_Id NUMBER,
+  Project_Id NUMBER,
+  CONSTRAINT DEPTPROJECT_PK PRIMARY KEY (Department_Id,Project_Id),
+  FOREIGN KEY (Department_Id)
+        REFERENCES Department(Department_Id),
+  FOREIGN KEY (Project_Id)
+        REFERENCES Project(Project_Id)
+  );
+  --------------------------------------------------
+  Project
+  --------------------------------------------------
+  CREATE TABLE Project(
+  Project_Id NUMBER,
+  Project_Name VARCHAR2(50),
+  Project_Description VARCHAR2(50),
+  CONSTRAINT Project_PK PRIMARY KEY (Project_Id)
+  );
+  
+  ---------------------------------------------------
+  AccountDetails
+  ---------------------------------------------------
+  
+  CREATE TABLE AccountDetails(
+  Account_Id NUMBER,
+  Bank_Name VARCHAR2(50),
+  Account_Number VARCHAR2(50),
+  Employee_Id NUMBER,
+  CONSTRAINT Account_PK PRIMARY KEY (Account_Id),
+  FOREIGN KEY (Employee_Id)
+        REFERENCES Employee(Employee_Id)
+  );
+  ---------------------------------------------------
+  Education
+  ---------------------------------------------------
+  CREATE TABLE Education(
+  Education_Id NUMBER,
+  Employee_Id NUMBER,
+  Degree VARCHAR(30),
+  Graduation_Year NUMBER(4),
+  CONSTRAINT Location_PK PRIMARY KEY (Education_Id),
+  FOREIGN KEY (Employee_Id)
+        REFERENCES Employee(Employee_Id)
+  );
+  ---------------------------------------------------
+  Leave
+  ---------------------------------------------------
+  
+  CREATE TABLE Leave(
+  Leave_Id NUMBER,
+  Employee_Id NUMBER,
+  Leave_date DATE,
+  CONSTRAINT Leave_PK PRIMARY KEY (Leave_Id),
+  FOREIGN KEY (Employee_Id)
+        REFERENCES Employee(Employee_Id)
+  );
+  
+ ----------------------------------------------------
+ EmployeeAttendance Bridge
+ ----------------------------------------------------
+  
+  CREATE TABLE Employee_Attendance(
+  Employee_Id NUMBER,
+  Attendance_Id NUMBER,
+  CONSTRAINT DEPARTMENTPROJECT_PK PRIMARY KEY (Employee_Id,Attendance_Id),
+  FOREIGN KEY (Employee_Id)
+        REFERENCES Employee(Employee_Id),
+  FOREIGN KEY (Attendance_Id)
+        REFERENCES Attendance(Attendance_Id)
+  );
+  
+  ----------------------------------------------------
+  Attendance
+  ----------------------------------------------------
+   
+  CREATE TABLE Attendance(
+  Attendance_Id NUMBER,
+  Hours_Worked NUMBER,
+  CONSTRAINT Attendance_PK PRIMARY KEY (Attendance_Id)
+  );
+  
+  ----------------------------------------------------
+  WorkLocation
+  ----------------------------------------------------
+  CREATE TABLE Work_Location(
+  Location_Id NUMBER,
+  Location VARCHAR2(25),
+  Number_Of_Employees NUMBER,
+  City VARCHAR2(25),
+  State VARCHAR2(25),
+  CONSTRAINT Loc_PK PRIMARY KEY (Location_Id)
+  );
+  
+  
+  

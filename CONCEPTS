@@ -1,0 +1,486 @@
+Inline Views
+-----------------------------------
+select Department_Name, count(*),
+to_char((count(*)/No_of_Employees.cnt)*100, '90.99') Percentages
+from Department,Employee, ( select count(*) cnt from Employee ) No_of_Employees
+where Department.Department_Id = Employee.Department_Id
+group by Department_Name, No_of_Employees.cnt
+/
+
+---------------------------------------
+Materialized Views
+-----------------------------------------
+
+Number of Employees with different degrees
+---------------------------------------------
+create materialized view Education_View
+	 build immediate
+	 refresh on commit
+	 as 
+	 select Degree, count(Degree) 
+	 from Education 
+	 group by Degree;
+	 
+------------------------------------------------------
+pragma exception_init
+------------------------------------------------------
+
+
+set define '&'
+prompt 'Enter a Department_Id : '
+accept Employee_Id number
+
+declare
+null_violated_exception exception;
+pragma exception_init(null_violated_exception , -1400);
+
+begin
+
+INSERT INTO Employee(Employee_Id,First_Name, Last_Name, Hire_Date, City, State) VALUES ('&Employee_Id','Ojas','Phansekar',to_date('14-APR-16', 'dd-MON-yyyy'),'New York City','New York',1);
+
+
+exception
+when null_violated_exception then
+dbms_output.put('ERROR! You entered an invalid column name ');
+dbms_output.put_line('Please check your table definition and try again');
+end;
+/
+
+declare
+invalid_create_statement exception;
+pragma exception_init(invalid_create_statement, -901);
+
+l_update_text varchar2(100) := 'create &table_name (
+id NUMBER
+Desc VARCHAR2(50)
+);'
+
+
+begin
+execute immediate l_update_text using '&table_name';
+exception
+when invalid_create_statement then
+dbms_output.put('ERROR! You entered an invalid column name ');
+dbms_output.put_line('Please check your table definition and try again');
+end;
+/
+
+-------------------------------------------------
+Procedures
+--------------------------------------------
+ -- l_employee NUMBER;
+ -- l_dept NUMBER;
+
+CREATE OR REPLACE PROCEDURE updating_employee_dept(emp_id IN NUMBER, dept_id IN NUMBER)
+IS  
+BEGIN
+  update Employee
+  set Department_Id = dept_id
+  where Employee_Id = emp_id;
+  DBMS_OUTPUT.PUT_LINE('Updated Employee Id' || emp_id || ' for Department' || dept_id);
+  
+EXCEPTION 
+  WHEN NO_DATA_FOUND THEN 
+  DBMS_OUTPUT.PUT_LINE('Invalid Value Error');
+  raise;
+	
+END;
+
+execute updating_employee_dept(101
+
+------------------------------------------
+
+declare
+	  cursor salaries(p_hourly in number)
+	  is select * 
+	  from Salary
+	  where Hourly_Pay=p_hourly;
+	  
+	  l_sal Salary%rowtype;
+	  begin
+	   dbms_output.put_line(' Extracting hourly pay');
+	   open salaries(30);
+	   loop
+	    fetch salaries into l_sal;
+		exit when salaries%notfound;
+		dbms_output.put('For Account ' || l_sal.Account_Id || ' Hourly Pay is ');
+        dbms_output.put_line(l_sal.hourly_pay);
+		end loop;
+		close salaries;
+       end;
+      /
+	  
+create or replace procedure emp_lookup(
+	p_empno in number) IS
+	o_ename in varchar2(25);
+	o_sal	in number;
+begin
+	select e.First_Name, s.Hourly_Pay
+		into o_ename,o_sal
+		from Employee e
+		inner join AccountDetails a
+		on e.Employee_Id = a.Employee_Id
+		inner join Salary s
+		on a.Account_Id = s.Account_Id
+		where e.Employee_Id = p_empno and rownum = 1
+		order by s.Hourly_Pay DESC;
+	exception
+		when NO_DATA_FOUND then
+			dbms_output.put_line('Enter valid employee id');
+end emp_lookup;
+/
+
+execute emp_lookup(101);
+
+create or replace procedure salaries(sal in number) 
+is
+--enames Employee.First_Name%type;
+--sals Salary.Hourly_Pay%type;
+begin
+	--loop
+		select e.First_Name, s.Hourly_Pay
+			--into enames,sals
+			from Employee e
+			inner join AccountDetails a
+			on e.Employee_Id = a.Employee_Id	
+			inner join Salary s
+			on a.Account_Id = s.Account_Id
+			where s.Hourly_Pay = sal;
+		dbms_output.put_line(e.First_Name||':'||s.Hourly_Pay);
+--	end loop;
+end salaries;
+/
+
+execute salaries(30)
+
+create or replace view salary_range_calculator
+as
+select e.First_Name, s.Hourly_Pay
+	from Employee e
+	inner join AccountDetails a
+	on e.Employee_Id = a.Employee_Id	
+	inner join Salary s
+	on a.Account_Id = s.Account_Id
+	where s.Hourly_Pay = 30;
+	
+--------------------------------------
+User Defined EXCEPTION
+--------------------------------------
+declare
+salary_lower exception;
+salary_highest exception;
+begin
+	for x in (select Gross_Salary from Salary) loop
+		dbms_output.put('Account_Id' || );
+		dbms_output.put_line('Please enter a number');
+		
+	end loop;
+	
+	dbms_output.put_line('The Salary is perfect');
+	
+exception 
+	when VALUE_ERROR then
+		dbms_output.put_line('Please enter a number');
+	when salary_lower then
+		dbms_output.put_line('Salary is lower');
+	when salary_highest then 
+		dbms_output.put_line('Salary is higher');
+end;
+/
+			
+---------------------------------------
+Ref Cursor
+---------------------------------------
+
+
+declare
+type emp_dept_rec is record(
+	Employee_Id number,
+	First_Name varchar2(66),
+	Department_Name varchar2(37)
+	);
+	
+	type emp_dept_refcur_type is ref cursor
+		return emp_dept_rec;
+		
+	employee_refcur emp_dept_refcur_type;
+	
+	emp_dept emp_dept_rec;
+begin
+	open employee_refcur for
+		select e.Employee_Id,
+			   e.First_Name || ' ' || e.Last_Name "Employee Name",
+			   d.Department_Name
+		from Employee e, Department d
+		where e.Department_Id = d.Department_Id
+		and rownum < 5
+		order by e.Employee_Id;
+		
+	fetch employee_refcur into emp_dept;
+	while employee_refcur%FOUND loop
+		dbms_output.put(emp_dept.First_Name || '''s department is ');
+		dbms_output.put_line(emp_dept.Department_Name);
+		fetch employee_refcur into emp_dept;
+	end loop;
+end;
+/
+------------------------------------------------------
+Pre-defined EXCEPTION
+------------------------------------------------------
+
+declare 
+	l_attendance Attendance%rowtype;
+	New_Exception exception;
+begin
+	l_attendance.Attendance_Id := 90;
+	l_attendance.Hours_Worked := 'AS';
+	insert into Attendance (Attendance_Id,Hours_Worked)
+	values ( l_attendance.Attendance_Id, l_attendance.Hours_Worked );
+exception 
+	when VALUE_ERROR then
+		dbms_output.put_line('We encountered the VALUE_ERROR exception');
+end;
+/
+
+--------------------------------------------------
+Procedures
+--------------------------------------------------
+create or replace procedure calculate_salaries(sal in number) 
+is
+
+l_salary NUMBER;
+
+
+begin
+
+			select count(*)
+			into l_salary
+			from Employee e
+			inner join AccountDetails a
+			on e.Employee_Id = a.Employee_Id	
+			inner join Salary s
+			on a.Account_Id = s.Account_Id
+			where s.Hourly_Pay like sal;
+			
+			if l_salary < 2       --less employees so good to motivate by increasing there salary
+				delete from Employee
+		dbms_output.put_line(e.First_Name||':'||s.Hourly_Pay);
+--	end loop;
+end salaries;
+/
+
+
+
+--------------------------------------------
+
+declare
+type emp_dept_rec is record(
+	Employee_Id number,
+	First_Name varchar2(66),
+	Department_Name varchar2(37)
+	);
+	
+	type emp_dept_refcur_type is ref cursor
+		return emp_dept_rec;
+		
+	employee_refcur emp_dept_refcur_type;
+	
+	emp_dept emp_dept_rec;
+begin
+	open employee_refcur for
+		select e.Employee_Id,
+			   e.First_Name || ' ' || e.Last_Name "Employee Name",
+			   d.Department_Name
+		from Employee e, Department d
+		where e.Department_Id = d.Department_Id
+		and rownum < 5
+		order by e.Employee_Id;
+		
+		
+		
+	fetch employee_refcur into emp_dept;
+	while employee_refcur%FOUND loop
+		dbms_output.put(emp_dept.First_Name || '''s department is ');
+		dbms_output.put_line(emp_dept.Department_Name);
+		fetch employee_refcur into emp_dept;
+		
+		open employee_refcur for
+		select e.Employee_Id,
+			   e.First_Name || ' ' || e.Last_Name "Employee Name",
+			   d.Department_Name
+		from Employee e, Department d
+		where e.Department_Id = d.Department_Id
+		and rownum < 5
+		order by e.Employee_Id;
+	exception 
+		when CURSOR_ALREADY_OPEN then
+			dbms_output.put_line('No Need to open cursor again');
+	end loop;
+	
+end;
+/
+
+
+----------------------
+
+declare
+	  cursor salaries(p_hourly in number)
+	  is select * 
+	  from Salary
+	  where Hourly_Pay=p_hourly;
+	  
+	  l_sal Salary%rowtype;
+	  begin
+	   dbms_output.put_line('Getting hourly pay');
+	   open salaries(30);
+	   loop
+	    fetch salaries into l_sal;
+		exit when salaries%notfound;
+		dbms_output.put('For Account ' || l_sal.Account_Id || ' Hourly Pay is ');
+        dbms_output.put_line(l_sal.hourly_pay);
+		end loop;
+		open salaries(30);
+		exception
+		when CURSOR_ALREADY_OPEN then
+		dbms_output.put_line('No Need to open cursor again');
+		close salaries;
+       end;
+      /
+	  
+	  ---------------------------------------------
+	  CREATE OR REPLACE TRIGGER modify_Fines
+AFTER DELETE
+ON rent
+FOR EACH ROW
+DECLARE
+  l_CardID NUMBER;
+  l_ItemID VARCHAR2(6);
+  l_Book NUMBER;
+  l_damage NUMBER;
+BEGIN  
+  SELECT cardid, itemid INTO l_CardID, l_ItemID
+  FROM rent
+  WHERE cardid LIKE :old.cardid;
+  
+  SELECT COUNT(*) INTO l_Book
+  FROM book
+  WHERE bookid LIKE l_ItemID;
+  
+    IF sysdate > :old.returndate THEN
+    ELSIF l_Book > 0 THEN
+      SELECT damageCost INTO l_damage
+      FROM book
+      WHERE bookid LIKE l_ItemID;
+    END IF;
+    
+    UPDATE card
+    SET status = 'B', fines = (fines + l_damage)
+    WHERE cardid LIKE l_CardID;
+  ELSE
+    DBMS_OUTPUT.PUT_LINE('The item has been return before deadline');
+  END IF;
+END;
+
+---------------------------------------
+Inline VIEW
+---------------------------------------
+select Department_Name, count(*),
+to_char((count(*)/No_of_Employees.cnt)*100, '90.99') Percentages
+from Department,Employee, ( select count(*) cnt from Employee ) No_of_Employees
+where Department.Department_Id = Employee.Department_Id
+group by Department_Name, No_of_Employees.cnt
+/
+---------------------------------------------------
+Materialized
+----------------------------------------------------
+
+create materialized view Education_View
+	 build immediate
+	 refresh on commit
+	 as 
+	 select Degree, count(Degree) 
+	 from Education 
+	 group by Degree;
+
+
+
+DECLARE
+   exp exception; 
+   pragma exception_init (exp, -20015); 
+   n int:=110; 
+  
+BEGIN 
+  FOR i IN (select e.Employee_Id from Employee e) LOOP 
+    dbms_output.put_line(i.Employee_Id); 
+         IF n !=  THEN
+            RAISE exp; 
+         END IF; 
+   END LOOP; 
+  
+EXCEPTION 
+   WHEN exp THEN
+      dbms_output.put_line('Value Error'); 
+  
+END;
+
+variable v_emp_id NUMBER;
+variable v_amount NUMBER;
+
+DECLARE
+    null_salary EXCEPTION;
+    /* Map error number returned by raise_application_error
+      to user-defined exception. */
+    PRAGMA EXCEPTION_INIT(null_salary, -20101);
+BEGIN
+   raise_salary(:v_emp_id, :v_amount);
+ EXCEPTION
+   WHEN null_salary THEN
+      INSERT INTO Salary VALUES (:v_emp_id,' ',' ',' ',' ',' ');
+END;
+
+
+
+--Remove locations and employees
+CREATE OR REPLACE PROCEDURE Unimportant_Locations(l_NOFEmployees IN Number)
+IS
+  l_wl NUMBER;
+  l_emp NUMBER;
+  
+BEGIN
+  SELECT COUNT(*) INTO l_wl
+  FROM Work_Location
+  WHERE Number_Of_Employees LIKE l_NOFEmployees;
+  
+  
+  select count(*)
+  into l_emp
+  from Employee e
+  inner join Work_Location w
+  on e.Employee_Id = w.Employee_Id
+  where w.Number_Of_Employees LIKE l_NOFEmployees;
+  
+  IF l_wl < 5 THEN    
+    DELETE FROM Work_Location
+    WHERE Number_Of_Employees = l_NOFEmployees;
+	END IF;
+	
+  EXCEPTION WHEN no_data_found THEN 
+  DBMS_OUTPUT.PUT_LINE('No Such Data Available');    
+END;
+
+
+
+
+  SELECT COUNT(*)
+  FROM Work_Location
+  WHERE Number_Of_Employees = 4;
+  
+  select count(*)
+  into l_emp
+  from Employee e
+  inner join Work_Location w
+  on e.Employee_Id = w.Employee_Id
+  where w.Number_Of_Employees like l_NOFEmployees;
+  
+  
+  
